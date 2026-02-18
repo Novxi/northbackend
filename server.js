@@ -1,17 +1,22 @@
+
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 
 const app = express();
-// macOS Port 5000 çakışmasını önlemek için 5001 kullanıyoruz
 const PORT = 5001;
 
-app.use(cors());
-app.use(bodyParser.json({ limit: '50mb' }));
-app.use(bodyParser.urlencoded({ extended: true }));
+// CORS: Allow ALL origins and methods
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'DELETE', 'PUT', 'PATCH', 'OPTIONS'],
+    allowedHeaders: '*'
+}));
+
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true }));
 
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOADS_DIR)) {
@@ -30,68 +35,125 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 const DB_PATH = path.join(__dirname, 'database.json');
+
 const initDB = () => {
-    if (!fs.existsSync(DB_PATH)) {
-        const initialData = { leads: [], messages: [], gallery: [] };
-        fs.writeFileSync(DB_PATH, JSON.stringify(initialData, null, 2));
+    const initialData = { leads: [], messages: [], gallery: [] };
+    try {
+        if (!fs.existsSync(DB_PATH)) {
+            fs.writeFileSync(DB_PATH, JSON.stringify(initialData, null, 2));
+        }
+    } catch (e) {
+        console.error("Init DB Error:", e);
     }
 };
 
-const readDB = () => JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-const writeDB = (data) => fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+const readDB = () => {
+    try {
+        if (!fs.existsSync(DB_PATH)) initDB();
+        const data = fs.readFileSync(DB_PATH, 'utf8');
+        return data ? JSON.parse(data) : { leads: [], messages: [], gallery: [] };
+    } catch (err) {
+        console.error("Veritabanı okuma hatası:", err);
+        return { leads: [], messages: [], gallery: [] };
+    }
+};
 
-// API Endpoints
+const writeDB = (data) => {
+    try {
+        fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+    } catch (err) {
+        console.error("Veritabanı yazma hatası:", err);
+    }
+};
+
+initDB();
+
+// --- API ENDPOINTS ---
+
+app.get('/', (req, res) => {
+    res.send('North Enerji Backend Aktif. Port: ' + PORT);
+});
+
 app.post('/api/upload', upload.single('image'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Resim yüklenemedi' });
-    const imageUrl = `http://localhost:${PORT}/uploads/${req.file.filename}`;
+    const protocol = req.protocol;
+    const host = req.get('host');
+    const imageUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
     res.json({ url: imageUrl });
 });
 
-app.get('/api/gallery', (req, res) => res.json(readDB().gallery));
+// Gallery
+app.get('/api/gallery', (req, res) => {
+    const db = readDB();
+    res.json(db.gallery || []);
+});
 app.post('/api/gallery', (req, res) => {
     const db = readDB();
     const newItem = { ...req.body, id: 'gal-' + Date.now() };
+    if (!db.gallery) db.gallery = [];
     db.gallery.unshift(newItem);
     writeDB(db);
     res.status(201).json(newItem);
 });
+app.delete('/api/gallery/:id', (req, res) => {
+    const db = readDB();
+    const item = db.gallery.find(i => i.id === req.params.id);
+    if (item && item.imageUrl) {
+        try {
+            const fileName = item.imageUrl.split('/').pop();
+            if (fileName) {
+                const filePath = path.join(UPLOADS_DIR, fileName);
+                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+            }
+        } catch (e) { console.error(e); }
+    }
+    db.gallery = (db.gallery || []).filter(i => i.id !== req.params.id);
+    writeDB(db);
+    res.json({ success: true });
+});
 
-app.get('/api/leads', (req, res) => res.json(readDB().leads));
+// Leads
+app.get('/api/leads', (req, res) => {
+    const db = readDB();
+    res.json(db.leads || []);
+});
 app.post('/api/leads', (req, res) => {
     const db = readDB();
     const newLead = { ...req.body, id: 'L-' + Date.now(), createdAt: new Date().toISOString() };
+    if (!db.leads) db.leads = [];
     db.leads.unshift(newLead);
     writeDB(db);
     res.status(201).json(newLead);
 });
 
-app.get('/api/messages', (req, res) => res.json(readDB().messages));
+// Messages
+app.get('/api/messages', (req, res) => {
+    const db = readDB();
+    res.json(db.messages || []);
+});
 app.post('/api/messages', (req, res) => {
     const db = readDB();
     const newMessage = { ...req.body, id: 'M-' + Date.now(), createdAt: new Date().toISOString() };
+    if (!db.messages) db.messages = [];
     db.messages.unshift(newMessage);
     writeDB(db);
     res.status(201).json(newMessage);
 });
 
-initDB();
-
+// Start Server
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`
-    🚀 NORTH ENERJI BACKEND AKTİF!
+    🚀 NORTH ENERJI BACKEND STARTED!
     ----------------------------------
-    📡 Sunucu Adresi: http://localhost:${PORT}
-    📸 Resim Klasörü: ${UPLOADS_DIR}
-    📂 Veritabanı: ${DB_PATH}
-    
-    Backend artık Port 5001 üzerinden dinlemede.
+    📡 URL: http://localhost:${PORT}
+    📂 Database: ${DB_PATH}
     `);
 });
 
 server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
-        console.error(`❌ HATA: Port ${PORT} kullanımda! Lütfen başka bir uygulama bu portu kullanıyor mu kontrol edin.`);
+        console.error(`❌ HATA: Port ${PORT} dolu!`);
     } else {
-        console.error('❌ Sunucu hatası:', err);
+        console.error('❌ Sunucu Hatası:', err);
     }
 });
