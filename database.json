@@ -1,0 +1,62 @@
+{
+  "leads": [],
+  "messages": [],
+  "gallery": [
+    {
+      "title": "Fiskobirlik GES",
+      "category": "Konut GES",
+      "city": "İstanbul",
+      "description": "",
+      "tags": [],
+      "systemPower": "4905kWp",
+      "panelType": "",
+      "inverterPower": "",
+      "hasStorage": false,
+      "imageUrl": "http://localhost:5001/uploads/1771407751641-677578086.png",
+      "id": "gal-1771407765150"
+    },
+    {
+      "title": "İMPERİAL HASTANELERİ GES ",
+      "category": "Arazi GES",
+      "city": "İstanbul",
+      "description": "",
+      "tags": [],
+      "systemPower": "1917kWp",
+      "panelType": "",
+      "inverterPower": "",
+      "hasStorage": false,
+      "imageUrl": "http://localhost:5001/uploads/1771407700126-183288849.png",
+      "id": "gal-1771407725664"
+    },
+    {
+      "title": "Altaş GES",
+      "category": "Arazi GES",
+      "city": "İstanbul",
+      "description": "",
+      "tags": [],
+      "systemPower": "8535kWp",
+      "panelType": "Monokristal",
+      "inverterPower": "",
+      "hasStorage": false,
+      "imageUrl": "http://localhost:5001/uploads/1771407630846-655440835.png",
+      "id": "gal-1771407655852"
+    },
+    {
+      "id": "sample-1",
+      "title": "Sapphire Villa Konut GES",
+      "category": "Konut GES",
+      "city": "İstanbul",
+      "description": "Modern mimariye entegre edilmiş premium konut kurulumu.",
+      "imageUrl": "https://images.unsplash.com/photo-1592833159155-c62df1b65634?q=80&w=1200&auto=format&fit=crop",
+      "date": "2024-02-15",
+      "tags": [
+        "Villa",
+        "Hibrit"
+      ],
+      "systemPower": "12 kWp",
+      "panelType": "Mono Perc",
+      "hasStorage": true,
+      "inverterPower": "10 kW Hybrid"
+    }
+  ]
+}
