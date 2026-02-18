@@ -6,7 +6,11 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const PORT = 5001;
+// Dynamic Port for Render or 5001 locally
+const PORT = process.env.PORT || 5001;
+
+// Trust Proxy for Render (to get correct protocol https)
+app.set('trust proxy', 1);
 
 // CORS: Allow ALL origins and methods
 app.use(cors({
@@ -71,14 +75,17 @@ initDB();
 // --- API ENDPOINTS ---
 
 app.get('/', (req, res) => {
-    res.send('North Enerji Backend Aktif. Port: ' + PORT);
+    res.send('North Enerji Backend Aktif. Running on Render/Local.');
 });
 
 app.post('/api/upload', upload.single('image'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Resim yüklenemedi' });
-    const protocol = req.protocol;
+    
+    // Determine protocol and host
+    const protocol = req.protocol; 
     const host = req.get('host');
     const imageUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+    
     res.json({ url: imageUrl });
 });
 
@@ -145,7 +152,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`
     🚀 NORTH ENERJI BACKEND STARTED!
     ----------------------------------
-    📡 URL: http://localhost:${PORT}
+    📡 URL: http://0.0.0.0:${PORT}
     📂 Database: ${DB_PATH}
     `);
 });

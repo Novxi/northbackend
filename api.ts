@@ -2,8 +2,8 @@
 import { Lead, ContactMessage, GalleryItem } from '../types';
 import { MOCK_GALLERY, MOCK_LEADS, MOCK_MESSAGES } from '../constants';
 
-// Use 127.0.0.1 to avoid macOS localhost ipv6 issues
-const BASE_URL = 'https://northbackend.onrender.com/api';
+// Production Backend URL on Render
+const BASE_URL = 'https://northbackend-1.onrender.com/api';
 
 export class ApiService {
     public static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
