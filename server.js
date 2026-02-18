@@ -6,29 +6,32 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-// Dynamic Port for Render or 5001 locally
 const PORT = process.env.PORT || 5001;
 
-// Trust Proxy for Render (to get correct protocol https)
+// Trust Proxy: Render load balancer'ı arkasında doğru protokolü (https) almak için
 app.set('trust proxy', 1);
 
-// CORS: Allow ALL origins and methods
+// CORS: Tüm kaynaklara izin ver (Geliştirme ve Prodüksiyon için en rahatı)
 app.use(cors({
-    origin: '*',
+    origin: '*', 
     methods: ['GET', 'POST', 'DELETE', 'PUT', 'PATCH', 'OPTIONS'],
-    allowedHeaders: '*'
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// Body parser limitini artır (Base64 veya büyük JSON'lar için)
 app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Uploads Klasörü Kontrolü
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOADS_DIR)) {
     fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
 
+// Uploads klasörünü statik olarak sun
 app.use('/uploads', express.static(UPLOADS_DIR));
 
+// Multer Ayarları
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, 'uploads/'),
     filename: (req, file, cb) => {
@@ -38,6 +41,8 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+// Basit Veritabanı (JSON dosyası)
+// DİKKAT: Render Free Tier'da bu dosya her restartta sıfırlanır!
 const DB_PATH = path.join(__dirname, 'database.json');
 
 const initDB = () => {
@@ -74,14 +79,15 @@ initDB();
 
 // --- API ENDPOINTS ---
 
+// Health Check (Frontend sunucunun ayakta olup olmadığını buradan anlar)
 app.get('/', (req, res) => {
-    res.send('North Enerji Backend Aktif. Running on Render/Local.');
+    res.status(200).send('North Enerji Backend Aktif. Running on Render.');
 });
 
+// Image Upload
 app.post('/api/upload', upload.single('image'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Resim yüklenemedi' });
     
-    // Determine protocol and host
     const protocol = req.protocol; 
     const host = req.get('host');
     const imageUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
@@ -149,18 +155,5 @@ app.post('/api/messages', (req, res) => {
 
 // Start Server
 const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`
-    🚀 NORTH ENERJI BACKEND STARTED!
-    ----------------------------------
-    📡 URL: http://0.0.0.0:${PORT}
-    📂 Database: ${DB_PATH}
-    `);
-});
-
-server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-        console.error(`❌ HATA: Port ${PORT} dolu!`);
-    } else {
-        console.error('❌ Sunucu Hatası:', err);
-    }
+    console.log(`🚀 NORTH ENERJI BACKEND STARTED on PORT ${PORT}`);
 });

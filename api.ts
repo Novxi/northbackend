@@ -2,15 +2,16 @@
 import { Lead, ContactMessage, GalleryItem } from '../types';
 import { MOCK_GALLERY, MOCK_LEADS, MOCK_MESSAGES } from '../constants';
 
-// Production Backend URL on Render
+// Render üzerindeki Canlı Backend Adresi
+// SONUNDA '/' OLMAMASINA DİKKAT EDİN
 const BASE_URL = 'https://northbackend-1.onrender.com/api';
 
 export class ApiService {
     public static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
         try {
+            // Render uyku modundaysa ilk istek uzun sürer, bu yüzden timeout eklemiyoruz, tarayıcı varsayılanını kullanıyoruz.
             const response = await fetch(`${BASE_URL}${endpoint}`, {
                 ...options,
-                mode: 'cors', // Explicitly set CORS mode
                 headers: {
                     'Content-Type': 'application/json',
                     ...options.headers,
@@ -18,17 +19,22 @@ export class ApiService {
             });
             
             if (!response.ok) {
+                // Eğer sunucu 404 veya 500 dönerse
                 const errorText = await response.text();
-                throw new Error(`HTTP Error: ${response.status} - ${errorText}`);
+                console.warn(`API Hatası (${endpoint}): ${response.status} - ${errorText}`);
+                throw new Error(`HTTP Error: ${response.status}`);
             }
             return await response.json();
         } catch (error) {
-            console.warn(`API Error (${endpoint}) - Sunucuya ulaşılamadı, Mock veriler kullanılıyor.`, error);
-            // Fallback to Mock Data if API fails
+            console.error(`BAĞLANTI HATASI (${endpoint}):`, error);
+            console.info("⚠️ Sunucuya ulaşılamadı. Mock (Test) verileri devreye giriyor.");
+            
+            // Hata durumunda uygulamanın çökmemesi için Mock Data döndür
             return this.getMockData(endpoint) as unknown as T;
         }
     }
 
+    // Yedek Veri Havuzu
     private static getMockData(endpoint: string): any {
         if (endpoint.includes('/leads')) return MOCK_LEADS;
         if (endpoint.includes('/gallery')) return MOCK_GALLERY;
@@ -43,7 +49,6 @@ export class ApiService {
             
             const response = await fetch(`${BASE_URL}/upload`, { 
                 method: 'POST', 
-                mode: 'cors',
                 body: formData 
             });
 
@@ -51,8 +56,8 @@ export class ApiService {
             const data = await response.json();
             return data.url;
         } catch (error) {
-            console.warn("Resim yükleme servisi çalışmıyor, mock resim kullanılıyor.");
-            // Return a placeholder image if upload fails
+            console.warn("Resim yüklenemedi, varsayılan resim kullanılıyor.", error);
+            // Yükleme başarısız olursa placeholder resim dön
             return "https://images.unsplash.com/photo-1592833159155-c62df1b65634?q=80&w=1000&auto=format&fit=crop";
         }
     }
